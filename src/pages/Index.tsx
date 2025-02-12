@@ -8,15 +8,14 @@ const Index = () => {
   const [videoFile, setVideoFile] = useState<File | null>(null);
 
   return (
-    <div className="min-h-screen bg-[rgb(18,18,18)] text-white">
-      <div className="container mx-auto px-4 py-8">
-        <header className="text-center mb-12">
-          <p className="text-xs uppercase tracking-wider text-neutral-400 mb-2">Video Editor</p>
-          <h1 className="text-4xl font-bold">Create Perfect Videos</h1>
+    <div className="min-h-screen bg-white">
+      <div className="max-w-[915px] mx-auto bg-white rounded-lg p-6">
+        <header className="flex items-center mb-8">
+          <h1 className="text-[18px] font-medium text-black font-inter ml-4">Add Media</h1>
         </header>
         
         <main className={cn(
-          "max-w-4xl mx-auto transition-all duration-300",
+          "transition-all duration-300",
           videoFile ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
         )}>
           {!videoFile ? (
