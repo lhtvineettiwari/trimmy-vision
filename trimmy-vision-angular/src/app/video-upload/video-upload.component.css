@@ -1,0 +1,39 @@
+.border-dashed {
+  border-style: dashed;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-black {
+  color: #000;
+}
+
+.bg-\[\#F5F5F5\] {
+  background-color: #F5F5F5;
+}
+
+.transition-all {
+  transition: all 0.2s;
+}
+
+.duration-200 {
+  transition-duration: 200ms;
+}
+
+.hover\:border-\[\#4633DC\]\/50:hover {
+  border-color: rgba(70, 51, 220, 0.5);
+}
+
+.border-\[\\\#4633DC\] {
+  border-color: #4633DC;
+}
+
+.bg-\[\\\#4633DC\]\/5 {
+  background-color: rgba(70,51,220,0.05);
+}

@@ -1,0 +1,26 @@
+<div 
+  class="border-2 border-dashed rounded-lg p-12 text-center transition-all duration-200 bg-[#F5F5F5] hover:border-[#4633DC]/50 cursor-pointer" 
+  [class.border-[#4633DC]="isDragging"
+  [class.bg-[#4633DC]/5]="isDragging"
+  (dragover)="onDragOver($event)"
+  (dragleave)="onDragLeave($event)"
+  (drop)="onDrop($event)"
+>
+  <!-- Hidden file input for fallback click-to-select -->
+  <input 
+    type="file" 
+    style="display: none;"
+    (change)="onFileSelected($event)"
+  />
+
+  <!-- Icon (e.g. Upload) -->
+  <div class="flex justify-center mb-4">
+    <!-- You can replace this placeholder or add an icon library like FontAwesome or Material Icons -->
+    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400">
+      <path d="M8 17v2a4 4 0 0 0 4 4h1"></path><path d="M20 17v2a4 4 0 0 1-4 4h-1"></path><path d="M12 12v9"></path><path d="m15 15-3-3-3 3"></path>
+    </svg>
+  </div>
+
+  <h3 class="text-xl font-medium mb-2 text-black">Drop your video here</h3>
+  <p class="text-gray-500">or click to select a file</p>
+</div>
