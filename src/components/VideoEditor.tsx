@@ -19,12 +19,45 @@ export const VideoEditor = ({ videoFile, onBack }: VideoEditorProps) => {
   const [duration, setDuration] = useState(0);
   const [trimStart, setTrimStart] = useState(0);
   const [trimEnd, setTrimEnd] = useState(100);
+  const [thumbnails, setThumbnails] = useState<string[]>([]);
+  const [isCropping, setIsCropping] = useState(false);
+  const [cropDimensions, setCropDimensions] = useState({ x: 0, y: 0, width: 100, height: 100 });
 
   useEffect(() => {
     const url = URL.createObjectURL(videoFile);
     setVideoUrl(url);
+    generateThumbnails(url);
     return () => URL.revokeObjectURL(url);
   }, [videoFile]);
+
+  const generateThumbnails = async (videoUrl: string) => {
+    const video = document.createElement('video');
+    video.src = videoUrl;
+    await video.load();
+    
+    const thumbnailCount = 8;
+    const thumbs: string[] = [];
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    video.addEventListener('loadedmetadata', () => {
+      canvas.width = 120;
+      canvas.height = (120 * 9) / 16;
+      
+      for (let i = 0; i < thumbnailCount; i++) {
+        video.currentTime = (video.duration / thumbnailCount) * i;
+        video.addEventListener('seeked', () => {
+          if (ctx) {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            thumbs.push(canvas.toDataURL());
+            if (thumbs.length === thumbnailCount) {
+              setThumbnails(thumbs);
+            }
+          }
+        }, { once: true });
+      }
+    });
+  };
 
   const handleLoadedMetadata = () => {
     if (videoRef.current) {
@@ -34,18 +67,59 @@ export const VideoEditor = ({ videoFile, onBack }: VideoEditorProps) => {
 
   const handleTimeUpdate = () => {
     if (videoRef.current) {
-      setCurrentTime(videoRef.current.currentTime);
+      const time = videoRef.current.currentTime;
+      if (time < (trimStart * duration / 100) || time > (trimEnd * duration / 100)) {
+        videoRef.current.currentTime = (trimStart * duration / 100);
+      }
+      setCurrentTime(time);
     }
   };
 
   const handleRotate = () => {
-    setRotation((prev) => (prev + 90) % 360);
-    toast.success("Video rotated");
+    setRotation((prev) => {
+      const newRotation = (prev + 90) % 360;
+      toast.success(`Rotated ${newRotation}°`);
+      return newRotation;
+    });
   };
 
   const handleTrimChange = (values: number[]) => {
     setTrimStart(values[0]);
     setTrimEnd(values[1]);
+    if (videoRef.current) {
+      videoRef.current.currentTime = (values[0] * duration / 100);
+    }
+  };
+
+  const handleCropToggle = () => {
+    setIsCropping(!isCropping);
+    if (!isCropping) {
+      toast.info("Click and drag on the video to crop");
+    }
+  };
+
+  const handleCropStart = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isCropping) return;
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    
+    setCropDimensions({ x, y, width: 0, height: 0 });
+  };
+
+  const handleCropMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isCropping) return;
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const currentX = ((e.clientX - rect.left) / rect.width) * 100;
+    const currentY = ((e.clientY - rect.top) / rect.height) * 100;
+    
+    setCropDimensions(prev => ({
+      ...prev,
+      width: currentX - prev.x,
+      height: currentY - prev.y
+    }));
   };
 
   return (
@@ -61,18 +135,33 @@ export const VideoEditor = ({ videoFile, onBack }: VideoEditorProps) => {
 
       <div className="grid grid-cols-2 gap-6">
         <div className="space-y-4">
-          <div className="aspect-[9/16] bg-[#F5F5F5] rounded-lg overflow-hidden">
+          <div 
+            className="aspect-[9/16] bg-[#F5F5F5] rounded-lg overflow-hidden relative"
+            onMouseDown={handleCropStart}
+            onMouseMove={handleCropMove}
+          >
             <video
               ref={videoRef}
               src={videoUrl}
               className={cn(
                 "w-full h-full object-contain transition-transform duration-300",
-                rotation && `rotate-${rotation}`
+                `rotate-${rotation}`
               )}
               onLoadedMetadata={handleLoadedMetadata}
               onTimeUpdate={handleTimeUpdate}
               controls
             />
+            {isCropping && (
+              <div 
+                className="absolute border-2 border-blue-500 bg-blue-500/20"
+                style={{
+                  left: `${cropDimensions.x}%`,
+                  top: `${cropDimensions.y}%`,
+                  width: `${cropDimensions.width}%`,
+                  height: `${cropDimensions.height}%`
+                }}
+              />
+            )}
           </div>
 
           <div className="grid grid-cols-3 gap-2">
@@ -87,8 +176,11 @@ export const VideoEditor = ({ videoFile, onBack }: VideoEditorProps) => {
             
             <Button
               variant="outline"
-              className="flex flex-col items-center gap-2 h-auto py-3"
-              onClick={() => toast.info("Crop feature coming soon")}
+              className={cn(
+                "flex flex-col items-center gap-2 h-auto py-3",
+                isCropping && "bg-blue-50"
+              )}
+              onClick={handleCropToggle}
             >
               <Crop className="w-5 h-5" />
               <span className="text-xs">Crop</span>
@@ -97,7 +189,6 @@ export const VideoEditor = ({ videoFile, onBack }: VideoEditorProps) => {
             <Button
               variant="outline"
               className="flex flex-col items-center gap-2 h-auto py-3"
-              onClick={() => toast.info("Trim feature coming soon")}
             >
               <Scissors className="w-5 h-5" />
               <span className="text-xs">Trim</span>
@@ -121,14 +212,32 @@ export const VideoEditor = ({ videoFile, onBack }: VideoEditorProps) => {
           </Button>
 
           <div className="space-y-2">
-            <p className="text-sm text-neutral-600">Trim Video</p>
-            <Slider
-              defaultValue={[0, 100]}
-              max={100}
-              step={1}
-              onValueChange={handleTrimChange}
-              className="my-4"
-            />
+            <div className="flex justify-between items-center">
+              <p className="text-sm text-neutral-600">Trim Video</p>
+              <p className="text-sm font-medium">{formatTime(currentTime)}</p>
+            </div>
+            
+            <div className="relative">
+              <div className="flex overflow-hidden rounded-lg mb-2 h-20">
+                {thumbnails.map((thumb, i) => (
+                  <img 
+                    key={i}
+                    src={thumb}
+                    alt={`Thumbnail ${i}`}
+                    className="h-full object-cover"
+                    style={{ width: `${100 / thumbnails.length}%` }}
+                  />
+                ))}
+              </div>
+              <Slider
+                defaultValue={[0, 100]}
+                value={[trimStart, trimEnd]}
+                max={100}
+                step={1}
+                onValueChange={handleTrimChange}
+                className="my-4"
+              />
+            </div>
             <div className="flex justify-between text-xs text-neutral-600">
               <span>{formatTime(trimStart * duration / 100)}</span>
               <span>{formatTime(trimEnd * duration / 100)}</span>
