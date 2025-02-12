@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { ArrowLeft, Crop, RotateCw, Scissors } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -68,8 +67,13 @@ export const VideoEditor = ({ videoFile, onBack }: VideoEditorProps) => {
   const handleTimeUpdate = () => {
     if (videoRef.current) {
       const time = videoRef.current.currentTime;
-      if (time < (trimStart * duration / 100) || time > (trimEnd * duration / 100)) {
-        videoRef.current.currentTime = (trimStart * duration / 100);
+      const startTime = trimStart * duration / 100;
+      const endTime = trimEnd * duration / 100;
+      
+      if (time < startTime) {
+        videoRef.current.currentTime = startTime;
+      } else if (time > endTime) {
+        videoRef.current.currentTime = startTime; // Loop back to start when reaching end
       }
       setCurrentTime(time);
     }
@@ -77,7 +81,8 @@ export const VideoEditor = ({ videoFile, onBack }: VideoEditorProps) => {
 
   const handleRotate = () => {
     setRotation((prev) => {
-      const newRotation = (prev + 90) % 360;
+      let newRotation = prev + 90;
+      if (newRotation === 360) newRotation = 0;
       toast.success(`Rotated ${newRotation}°`);
       return newRotation;
     });
@@ -87,7 +92,16 @@ export const VideoEditor = ({ videoFile, onBack }: VideoEditorProps) => {
     setTrimStart(values[0]);
     setTrimEnd(values[1]);
     if (videoRef.current) {
-      videoRef.current.currentTime = (values[0] * duration / 100);
+      const currentStart = trimStart * duration / 100;
+      const currentEnd = trimEnd * duration / 100;
+      const newStart = values[0] * duration / 100;
+      const newEnd = values[1] * duration / 100;
+      
+      if (Math.abs(currentStart - newStart) > Math.abs(currentEnd - newEnd)) {
+        videoRef.current.currentTime = newStart;
+      } else {
+        videoRef.current.currentTime = newEnd;
+      }
     }
   };
 
@@ -145,7 +159,7 @@ export const VideoEditor = ({ videoFile, onBack }: VideoEditorProps) => {
               src={videoUrl}
               className={cn(
                 "w-full h-full object-contain transition-transform duration-300",
-                `rotate-${rotation}`
+                rotation && `rotate-${rotation}`
               )}
               onLoadedMetadata={handleLoadedMetadata}
               onTimeUpdate={handleTimeUpdate}
