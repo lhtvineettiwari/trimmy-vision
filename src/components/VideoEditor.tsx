@@ -82,8 +82,8 @@ export const VideoEditor = ({ videoFile, onBack }: VideoEditorProps) => {
   const handleRotate = () => {
     setRotation((prev) => {
       let newRotation = prev + 90;
-      if (newRotation === 360) newRotation = 0;
-      toast.success(`Rotated ${newRotation}°`);
+      if (newRotation >= 360) newRotation = 0;
+      toast.success(`Rotated ${newRotation === 0 ? '360' : newRotation}°`);
       return newRotation;
     });
   };
@@ -103,6 +103,41 @@ export const VideoEditor = ({ videoFile, onBack }: VideoEditorProps) => {
         videoRef.current.currentTime = newEnd;
       }
     }
+    generateTrimmedThumbnails(videoUrl, values[0], values[1]);
+  };
+
+  const generateTrimmedThumbnails = async (url: string, start: number, end: number) => {
+    const video = document.createElement('video');
+    video.src = url;
+    await video.load();
+    
+    const thumbnailCount = 8;
+    const thumbs: string[] = [];
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    video.addEventListener('loadedmetadata', () => {
+      canvas.width = 120;
+      canvas.height = (120 * 9) / 16;
+      
+      const startTime = (start * video.duration) / 100;
+      const endTime = (end * video.duration) / 100;
+      const duration = endTime - startTime;
+      
+      for (let i = 0; i < thumbnailCount; i++) {
+        const currentTime = startTime + (duration / thumbnailCount) * i;
+        video.currentTime = currentTime;
+        video.addEventListener('seeked', () => {
+          if (ctx) {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            thumbs.push(canvas.toDataURL());
+            if (thumbs.length === thumbnailCount) {
+              setThumbnails(thumbs);
+            }
+          }
+        }, { once: true });
+      }
+    });
   };
 
   const handleCropToggle = () => {
@@ -159,7 +194,12 @@ export const VideoEditor = ({ videoFile, onBack }: VideoEditorProps) => {
               src={videoUrl}
               className={cn(
                 "w-full h-full object-contain transition-transform duration-300",
-                rotation && `rotate-${rotation}`
+                {
+                  'rotate-90': rotation === 90,
+                  'rotate-180': rotation === 180,
+                  'rotate-[270deg]': rotation === 270,
+                  'rotate-[360deg]': rotation === 0,
+                }
               )}
               onLoadedMetadata={handleLoadedMetadata}
               onTimeUpdate={handleTimeUpdate}
